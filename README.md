@@ -24,6 +24,9 @@ GitHub webhooks send complex JSON payloads that Google Chat cannot process direc
 4. Edit `.env` and add your Google Chat webhook URLs:
    ```
    GOOGLE_CHAT_WEBHOOKS={"default":"https://chat.googleapis.com/v1/spaces/YOUR_SPACE_ID/messages?key=YOUR_KEY&token=YOUR_TOKEN","project1":"https://chat.googleapis.com/v1/spaces/ANOTHER_SPACE/messages?key=YOUR_KEY&token=ANOTHER_TOKEN"}
+   
+   # If you're deploying to Vercel, set your app URL
+   VERCEL_APP_URL=https://your-app-name.vercel.app
    ```
 
 ## Usage
@@ -78,6 +81,10 @@ This service supports routing webhooks to different Google Chat spaces based on 
 
 For testing commits:
 ```bash
+# The script test-curl.sh will use the VERCEL_APP_URL from your .env file
+./test-curl.sh
+
+# Or manually:
 curl -X POST http://localhost:3001/webhook/project1 \
   -H "Content-Type: application/json" \
   -H "X-GitHub-Event: push" \
@@ -122,4 +129,4 @@ This service provides formatted messages for:
 
 ## Customizing Notifications
 
-To customize how notifications appear, edit the `src/formatter.ts` file. 
+To customize how notifications appear, edit the `src/formatter.ts` file.

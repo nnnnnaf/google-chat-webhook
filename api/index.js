@@ -153,46 +153,5 @@ function truncateComment(comment, maxLength = 100) {
   return comment.substring(0, maxLength - 3) + '...';
 }
 
-// GitHub webhook endpoint
-app.post('/webhook/:project?', (req, res) => {
-  try {
-    const eventType = req.headers['x-github-event'];
-    const payload = req.body;
-    // Check for project in both path parameters and query parameters
-    const project = req.params.project || req.query.project || defaultWebhookKey;
-    
-    console.log(`Received GitHub ${eventType} event for project: ${project}`);
-    
-    if (!eventType) {
-      return res.status(400).send('Missing X-GitHub-Event header');
-    }
-    
-    // Get the webhook URL for the specified project
-    const webhookUrl = googleChatWebhooks[project];
-    
-    if (!webhookUrl) {
-      console.error(`No webhook URL configured for project: ${project}`);
-      return res.status(404).send(`No webhook configured for project: ${project}`);
-    }
-    
-    // Format the message for Google Chat
-    const message = formatGithubWebhookForGoogleChat(payload, eventType);
-    
-    // Send to Google Chat
-    axios.post(webhookUrl, { text: message })
-      .then(() => {
-        console.log(`Message successfully sent to Google Chat for project: ${project}`);
-        res.status(200).send('Webhook processed successfully');
-      })
-      .catch((error) => {
-        console.error(`Error sending to Google Chat for project ${project}:`, error);
-        res.status(500).send('Error sending to Google Chat');
-      });
-  } catch (error) {
-    console.error('Error processing webhook:', error);
-    res.status(500).send('Error processing webhook');
-  }
-});
-
 // Export the Express app for Vercel
 module.exports = app; 
