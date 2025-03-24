@@ -68,19 +68,24 @@ app.post('/webhook/:project?', (req, res) => {
   }
 });
 
-// Start the server
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-  
-  // Check webhook configuration
-  const webhookCount = Object.keys(googleChatWebhooks).length;
-  if (webhookCount === 0) {
-    console.warn('WARNING: No Google Chat webhooks configured. The service will not forward messages.');
-  } else {
-    console.log(`Configured with ${webhookCount} webhook destinations: ${Object.keys(googleChatWebhooks).join(', ')}`);
+// Only start the server when running directly (not when imported)
+if (require.main === module) {
+  app.listen(port, () => {
+    console.log(`Server running on port ${port}`);
     
-    if (!googleChatWebhooks[defaultWebhookKey]) {
-      console.warn(`WARNING: Default webhook key "${defaultWebhookKey}" not found in configuration.`);
+    // Check webhook configuration
+    const webhookCount = Object.keys(googleChatWebhooks).length;
+    if (webhookCount === 0) {
+      console.warn('WARNING: No Google Chat webhooks configured. The service will not forward messages.');
+    } else {
+      console.log(`Configured with ${webhookCount} webhook destinations: ${Object.keys(googleChatWebhooks).join(', ')}`);
+      
+      if (!googleChatWebhooks[defaultWebhookKey]) {
+        console.warn(`WARNING: Default webhook key "${defaultWebhookKey}" not found in configuration.`);
+      }
     }
-  }
-}); 
+  });
+}
+
+// Export the Express app for serverless environments
+export { app }; 
