@@ -2,6 +2,7 @@
 const express = require('express');
 const axios = require('axios');
 const dotenv = require('dotenv');
+const url = require('url');
 
 // Load environment variables
 dotenv.config();
@@ -12,30 +13,93 @@ const app = express();
 let googleChatWebhooks = {};
 try {
   googleChatWebhooks = JSON.parse(process.env.GOOGLE_CHAT_WEBHOOKS || '{}');
+  console.log("Available webhook keys:", Object.keys(googleChatWebhooks));
 } catch (err) {
   console.error('Error parsing GOOGLE_CHAT_WEBHOOKS:', err);
   googleChatWebhooks = {};
 }
 
 const defaultWebhookKey = process.env.DEFAULT_WEBHOOK_KEY || 'default';
+console.log("Default webhook key:", defaultWebhookKey);
 
 // Middleware
 app.use(express.json());
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  next();
+});
 
 // Health check endpoint
 app.get('/', (req, res) => {
   res.status(200).send('GitHub to Google Chat Webhook Service is running');
 });
 
-// Direct webhook endpoint for Vercel routing
+// Root POST endpoint for direct webhook requests
 app.post('/', (req, res) => {
   try {
     const eventType = req.headers['x-github-event'];
     const payload = req.body;
-    // Use the project from query parameter or fall back to default
     const project = req.query.project || defaultWebhookKey;
     
+    console.log(`Received GitHub ${eventType} event at root endpoint for project: ${project}`);
+    
+    if (!eventType) {
+      return res.status(400).send('Missing X-GitHub-Event header');
+    }
+    
+    // Get the webhook URL for the specified project
+    const webhookUrl = googleChatWebhooks[project];
+    
+    if (!webhookUrl) {
+      console.error(`No webhook URL configured for project: ${project}`);
+      return res.status(404).send(`No webhook configured for project: ${project}`);
+    }
+    
+    // Format the message for Google Chat
+    const message = formatGithubWebhookForGoogleChat(payload, eventType);
+    
+    // Send to Google Chat
+    axios.post(webhookUrl, { text: message })
+      .then(() => {
+        console.log(`Message successfully sent to Google Chat for project: ${project}`);
+        res.status(200).send('Webhook processed successfully');
+      })
+      .catch((error) => {
+        console.error(`Error sending to Google Chat for project ${project}:`, error);
+        res.status(500).send('Error sending to Google Chat');
+      });
+  } catch (error) {
+    console.error('Error processing webhook at root endpoint:', error);
+    res.status(500).send('Error processing webhook');
+  }
+});
+
+// GitHub webhook endpoint
+app.post('/webhook/:project?', (req, res) => {
+  try {
+    const eventType = req.headers['x-github-event'];
+    const payload = req.body;
+    
+    // Extract project from URL path
+    let project = req.params.project;
+    
+    // If no project in path params, try to extract from URL path manually
+    if (!project) {
+      const urlPath = req.url.split('?')[0];
+      const pathParts = urlPath.split('/').filter(Boolean);
+      
+      if (pathParts.length > 1 && pathParts[0] === 'webhook') {
+        project = pathParts[1];
+      }
+    }
+    
+    // Fall back to default if still no project
+    if (!project) {
+      project = defaultWebhookKey;
+    }
+    
     console.log(`Received GitHub ${eventType} event for project: ${project}`);
+    console.log(`Request URL: ${req.url}, Extracted project: ${project}`);
     
     if (!eventType) {
       return res.status(400).send('Missing X-GitHub-Event header');
