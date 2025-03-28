@@ -80,6 +80,9 @@ app.post('/webhook/:project?', (req, res) => {
     const eventType = req.headers['x-github-event'];
     const payload = req.body;
     
+    console.log("GitHub Event Type:", eventType);
+    console.log("GitHub Delivery ID:", req.headers['x-github-delivery']);
+    
     // Extract project from URL path
     let project = req.params.project;
     
@@ -114,7 +117,9 @@ app.post('/webhook/:project?', (req, res) => {
     }
     
     // Format the message for Google Chat
+    console.log(`Formatting message for event type: ${eventType}`);
     const message = formatGithubWebhookForGoogleChat(payload, eventType);
+    console.log(`Formatted message: ${message.substring(0, 100)}${message.length > 100 ? '...' : ''}`);
     
     // Send to Google Chat
     axios.post(webhookUrl, { text: message })
@@ -165,6 +170,25 @@ function formatGithubWebhookForGoogleChat(payload, eventType) {
     case 'create':
       const refType = payload.ref_type || 'reference';
       message = `🌱 New ${refType} *${payload.ref}* created in *${repoName}* by *${payload.sender?.login}*`;
+      break;
+    case 'issues':
+      const issueAction = payload.action || 'updated';
+      const issueNum = payload.issue?.number || '';
+      const issueTitleText = payload.issue?.title || '';
+      const issueUrl = payload.issue?.html_url || '';
+      
+      let emoji = '🐛';
+      if (issueAction === 'closed') emoji = '✅';
+      else if (issueAction === 'opened') emoji = '🔍';
+      else if (issueAction === 'reopened') emoji = '🔄';
+      
+      message = `${emoji} Issue #${issueNum} ${issueAction}: *${issueTitleText}*\n`;
+      
+      if (issueAction === 'closed') {
+        message += `Closed by *${payload.sender?.login || 'Someone'}*\n`;
+      }
+      
+      message += `${issueUrl}`;
       break;
     case 'pull_request':
       const prAction = payload.action || 'updated';

@@ -37,6 +37,25 @@ export function formatGithubWebhookForGoogleChat(payload: any, eventType: string
         }
       }
       break;
+    case 'issues':
+      const issueAction = payload.action || 'updated';
+      const issueNum = payload.issue?.number || '';
+      const issueTitleText = payload.issue?.title || '';
+      const issueUrl = payload.issue?.html_url || '';
+      
+      let emoji = '🐛';
+      if (issueAction === 'closed') emoji = '✅';
+      else if (issueAction === 'opened') emoji = '🔍';
+      else if (issueAction === 'reopened') emoji = '🔄';
+      
+      message = `${emoji} Issue #${issueNum} ${issueAction}: *${issueTitleText}*\n`;
+      
+      if (issueAction === 'closed') {
+        message += `Closed by *${payload.sender?.login || 'Someone'}*\n`;
+      }
+      
+      message += `${issueUrl}`;
+      break;
     case 'create':
       const refType = payload.ref_type || 'reference';
       message = `🌱 New ${refType} *${payload.ref}* created in *${repoName}* by *${payload.sender?.login}*`;

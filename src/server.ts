@@ -34,8 +34,10 @@ app.post('/webhook/:project?', (req, res) => {
     const eventType = req.headers['x-github-event'] as string;
     const payload = req.body;
     const project = req.params.project || defaultWebhookKey;
+    const isDryRun = req.query.dry_run === 'true' || req.query['dry-run'] === 'true';
     
     console.log(`Received GitHub ${eventType} event for project: ${project}`);
+    console.log(`Dry run mode: ${isDryRun ? 'enabled' : 'disabled'}`);
     
     if (!eventType) {
       return res.status(400).send('Missing X-GitHub-Event header');
@@ -44,13 +46,24 @@ app.post('/webhook/:project?', (req, res) => {
     // Get the webhook URL for the specified project
     const webhookUrl = googleChatWebhooks[project];
     
-    if (!webhookUrl) {
+    if (!webhookUrl && !isDryRun) {
       console.error(`No webhook URL configured for project: ${project}`);
       return res.status(404).send(`No webhook configured for project: ${project}`);
     }
     
     // Format the message for Google Chat
     const message = formatGithubWebhookForGoogleChat(payload, eventType);
+    
+    // If dry run, just return the message that would be sent
+    if (isDryRun) {
+      console.log(`[DRY RUN] Message that would be sent: ${message}`);
+      return res.status(200).json({ 
+        success: true, 
+        message,
+        project,
+        eventType
+      });
+    }
     
     // Send to Google Chat
     axios.post(webhookUrl, { text: message })

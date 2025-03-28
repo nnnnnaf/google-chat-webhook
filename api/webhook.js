@@ -50,6 +50,35 @@ function formatGithubWebhookForGoogleChat(payload, eventType) {
         }
       }
       break;
+    case 'issues':
+      const issueAction = payload.action || 'updated';
+      const issueNum = payload.issue?.number || '';
+      const issueTitleText = payload.issue?.title || '';
+      const issueUrl = payload.issue?.html_url || '';
+      
+      let emoji = '🐛';
+      if (issueAction === 'closed') emoji = '✅';
+      else if (issueAction === 'opened') emoji = '🔍';
+      else if (issueAction === 'reopened') emoji = '🔄';
+      
+      message = `${emoji} Issue #${issueNum} ${issueAction}: *${issueTitleText}*\n`;
+      
+      if (issueAction === 'closed') {
+        message += `Closed by *${payload.sender?.login || 'Someone'}*\n`;
+      }
+      
+      message += `${issueUrl}`;
+      break;
+    case 'issue_comment':
+      const issueNumber = payload.issue?.number || '';
+      const issueTitle = payload.issue?.title || '';
+      const commentAuthor = payload.comment?.user?.login || 'Someone';
+      const commentBody = payload.comment?.body || '';
+      const commentUrl = payload.comment?.html_url || '';
+      const isPR = payload.issue?.pull_request ? 'PR' : 'Issue';
+      
+      message = `💬 New comment on ${isPR} #${issueNumber}: *${issueTitle}*\n*${commentAuthor}* commented: _"${truncateComment(commentBody)}"_\n${commentUrl}`;
+      break;
     // Other event types handling...
     default:
       message = `📢 GitHub ${eventType} event received from *${repoName}*`;
@@ -75,6 +104,8 @@ module.exports = async (req, res) => {
   console.log("Request URL:", req.url);
   console.log("Request path:", req.url.split('?')[0]);
   console.log("Request query:", req.query);
+  console.log("GitHub Event Type:", req.headers['x-github-event']);
+  console.log("GitHub Delivery ID:", req.headers['x-github-delivery']);
   
   // Only process POST requests
   if (req.method !== 'POST') {
@@ -123,7 +154,9 @@ module.exports = async (req, res) => {
     }
     
     // 3. Format the message for Google Chat
+    console.log(`Formatting message for event type: ${eventType}`);
     const message = formatGithubWebhookForGoogleChat(payload, eventType);
+    console.log(`Formatted message: ${message.substring(0, 100)}${message.length > 100 ? '...' : ''}`);
     
     // 4. Send to Google Chat
     try {
