@@ -77,42 +77,27 @@ This service supports routing webhooks to different Google Chat spaces based on 
 
 ## Testing
 
-### Test with cURL
+### Formatter Testing
 
-For testing commits:
+Test webhook formatting without sending messages to Google Chat:
+
 ```bash
-# The script test-curl.sh will use the VERCEL_APP_URL from your .env file
-./test-curl.sh
+# Test with built-in examples
+./test-formatter.sh issues                   # Test issues event
+./test-formatter.sh issue_comment            # Test issue comment event
 
-# Or manually:
-curl -X POST http://localhost:3001/webhook/project1 \
-  -H "Content-Type: application/json" \
-  -H "X-GitHub-Event: push" \
-  -d '{
-    "repository": {"full_name": "your/repo"},
-    "pusher": {"name": "testuser"},
-    "ref": "refs/heads/main",
-    "commits": [
-      {"id": "1234567890abcdef", "message": "Test commit message"}
-    ]
-  }'
+# Test with a custom JSON file
+./test-formatter.sh issue_comment example-payload.json
+
+# Test with piped payload
+cat example-payload.json | ./test-formatter.sh issue_comment -
 ```
 
-For testing comments:
-```bash
-curl -X POST http://localhost:3001/webhook/project1 \
-  -H "Content-Type: application/json" \
-  -H "X-GitHub-Event: issue_comment" \
-  -d '{
-    "repository": {"full_name": "your/repo"},
-    "issue": {"number": 42, "title": "Test issue"},
-    "comment": {
-      "user": {"login": "testuser"},
-      "body": "This is a test comment",
-      "html_url": "https://github.com/your/repo/issues/42#issuecomment-123456"
-    }
-  }'
-```
+The script will:
+1. Start the local server (if not running)
+2. Process the webhook payload
+3. Show exactly what would be sent to Google Chat 
+4. Stop the server when done
 
 ## Supported GitHub Events
 

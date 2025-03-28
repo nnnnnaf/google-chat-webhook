@@ -1,0 +1,21 @@
+{
+  "action": "created",
+  "issue": {
+    "number": 42,
+    "title": "Custom Test Issue",
+    "html_url": "https://github.com/theafenterprise/test-repo/issues/42"
+  },
+  "comment": {
+    "html_url": "https://github.com/theafenterprise/test-repo/issues/42#issuecomment-12345",
+    "user": {
+      "login": "test-user"
+    },
+    "body": "This is a custom test comment with multiple lines.\nSecond line of the comment.\nThird line with some code: `console.log('test')`"
+  },
+  "repository": {
+    "full_name": "theafenterprise/test-repo"
+  },
+  "sender": {
+    "login": "test-user"
+  }
+} 
