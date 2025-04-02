@@ -79,6 +79,126 @@ function formatGithubWebhookForGoogleChat(payload, eventType) {
       
       message = `💬 New comment on ${isPR} #${issueNumber}: *${issueTitle}*\n*${commentAuthor}* commented: _"${truncateComment(commentBody)}"_\n${commentUrl}`;
       break;
+    case 'workflow_job':
+      const jobAction = payload.action || 'updated';
+      const workflow = payload.workflow_job?.workflow_name || 'Unknown workflow';
+      const jobName = payload.workflow_job?.name || 'Unknown job';
+      const conclusion = payload.workflow_job?.conclusion || 'unknown';
+      const status = payload.workflow_job?.status || 'unknown';
+      const workflowBranch = payload.workflow_job?.head_branch || 'unknown branch';
+      const runUrl = payload.workflow_job?.html_url || '';
+      
+      let jobEmoji = '🔄';
+      if (status === 'completed') {
+        jobEmoji = conclusion === 'success' ? '✅' : conclusion === 'failure' ? '❌' : conclusion === 'cancelled' ? '⚠️' : '❓';
+      }
+      
+      message = `${jobEmoji} Workflow job *${jobName}* ${jobAction} with *${conclusion}*\n`;
+      message += `*Workflow*: ${workflow}\n`;
+      message += `*Branch*: ${workflowBranch}\n`;
+      message += `*Status*: ${status}\n`;
+      
+      if (payload.workflow_job?.steps && payload.workflow_job.steps.length > 0) {
+        const failedSteps = payload.workflow_job.steps.filter((step) => step.conclusion !== 'success');
+        if (failedSteps.length > 0 && conclusion !== 'success') {
+          message += `\nFailed steps:\n`;
+          failedSteps.forEach((step) => {
+            message += `• ${step.name}: ${step.conclusion}\n`;
+          });
+        }
+      }
+      
+      message += `\n${runUrl}`;
+      break;
+    case 'check_suite':
+      const checkSuiteAction = payload.action || 'updated';
+      const checkSuiteStatus = payload.check_suite?.status || 'unknown';
+      const checkSuiteConclusion = payload.check_suite?.conclusion || 'unknown';
+      const checkSuiteUrl = payload.check_suite?.html_url || '';
+      const checkSuiteBranch = payload.check_suite?.head_branch || 'unknown branch';
+      
+      let checkSuiteEmoji = '🔄';
+      if (checkSuiteStatus === 'completed') {
+        checkSuiteEmoji = checkSuiteConclusion === 'success' ? '✅' : checkSuiteConclusion === 'failure' ? '❌' : checkSuiteConclusion === 'cancelled' ? '⚠️' : '❓';
+      }
+      
+      message = `${checkSuiteEmoji} Check suite ${checkSuiteAction} with *${checkSuiteConclusion}*\n`;
+      message += `*Status*: ${checkSuiteStatus}\n`;
+      message += `*Branch*: ${checkSuiteBranch}\n`;
+      
+      if (payload.check_suite?.pull_requests && payload.check_suite.pull_requests.length > 0) {
+        const firstPR = payload.check_suite.pull_requests[0];
+        message += `*PR*: #${firstPR.number}\n`;
+      }
+      
+      if (checkSuiteUrl) {
+        message += `\n${checkSuiteUrl}`;
+      }
+      break;
+    case 'check_run':
+      const checkRunAction = payload.action || 'updated';
+      const checkRunName = payload.check_run?.name || 'Unknown check';
+      const checkRunStatus = payload.check_run?.status || 'unknown';
+      const checkRunConclusion = payload.check_run?.conclusion || 'unknown';
+      const checkRunUrl = payload.check_run?.html_url || '';
+      const checkRunBranch = payload.check_run?.check_suite?.head_branch || payload.check_run?.head_branch || 'unknown branch';
+      
+      let checkRunEmoji = '🔄';
+      if (checkRunStatus === 'completed') {
+        checkRunEmoji = checkRunConclusion === 'success' ? '✅' : checkRunConclusion === 'failure' ? '❌' : checkRunConclusion === 'cancelled' ? '⚠️' : '❓';
+      }
+      
+      message = `${checkRunEmoji} Check run *${checkRunName}* ${checkRunAction} with *${checkRunConclusion}*\n`;
+      message += `*Status*: ${checkRunStatus}\n`;
+      message += `*Branch*: ${checkRunBranch}\n`;
+      
+      if (payload.check_run?.pull_requests && payload.check_run.pull_requests.length > 0) {
+        const firstPR = payload.check_run.pull_requests[0];
+        message += `*PR*: #${firstPR.number}\n`;
+      }
+      
+      if (checkRunUrl) {
+        message += `\n${checkRunUrl}`;
+      }
+      break;
+    case 'workflow_run':
+      const workflowRunAction = payload.action || 'updated';
+      const workflowRunName = payload.workflow_run?.name || 'Unknown workflow';
+      const workflowRunStatus = payload.workflow_run?.status || 'unknown';
+      const workflowRunConclusion = payload.workflow_run?.conclusion || 'unknown';
+      const workflowRunUrl = payload.workflow_run?.html_url || '';
+      const workflowRunBranch = payload.workflow_run?.head_branch || 'unknown branch';
+      
+      let workflowRunEmoji = '🔄';
+      if (workflowRunStatus === 'completed') {
+        workflowRunEmoji = workflowRunConclusion === 'success' ? '✅' : workflowRunConclusion === 'failure' ? '❌' : workflowRunConclusion === 'cancelled' ? '⚠️' : '❓';
+      }
+      
+      message = `${workflowRunEmoji} Workflow run *${workflowRunName}* ${workflowRunAction} with *${workflowRunConclusion}*\n`;
+      message += `*Status*: ${workflowRunStatus}\n`;
+      message += `*Branch*: ${workflowRunBranch}\n`;
+      message += `*Run By*: ${payload.sender?.login || 'Unknown'}\n`;
+      
+      if (workflowRunUrl) {
+        message += `\n${workflowRunUrl}`;
+      }
+      break;
+    case 'registry_package':
+      const packageType = payload.registry_package?.package_type || 'unknown';
+      const packageName = payload.registry_package?.name || 'unknown';
+      const packageVersion = payload.registry_package?.package_version?.version || 'latest';
+      const packageNamespace = payload.registry_package?.namespace || '';
+      const packageAction = payload.action || 'updated';
+      
+      message = `📦 Package *${packageNamespace ? packageNamespace + '/' : ''}${packageName}* ${packageAction}\n`;
+      message += `*Type*: ${packageType}\n`;
+      message += `*Version*: ${packageVersion}\n`;
+      message += `*Published by*: ${payload.sender?.login || 'Unknown'}\n`;
+      
+      if (payload.registry_package?.html_url) {
+        message += `\n${payload.registry_package.html_url}`;
+      }
+      break;
     // Other event types handling...
     default:
       message = `📢 GitHub ${eventType} event received from *${repoName}*`;
