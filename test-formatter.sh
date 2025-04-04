@@ -2,17 +2,63 @@
 
 # This script tests the formatter directly without sending to Google Chat
 # Usage: 
-#   ./test-formatter.sh <event_type> [payload_file]
+#   ./test-formatter.sh <event_type> [payload_file]   # Specify both event type and payload file
+#   ./test-formatter.sh [payload_file]                # Auto-detect event type from payload file
 #   echo '{"key":"value"}' | ./test-formatter.sh <event_type> -
 #
 # Examples:
 #   ./test-formatter.sh issues                    # Use default issues payload
-#   ./test-formatter.sh issues my-payload.json    # Use payload from file
+#   ./test-formatter.sh example-payload.json      # Auto-detect from file
+#   ./test-formatter.sh issues my-payload.json    # Use payload from file with specified event
 #   cat my-payload.json | ./test-formatter.sh issues -  # Use payload from stdin
 
-# Default event type if not provided
-EVENT_TYPE=${1:-"issue_comment"}
-PAYLOAD_FILE=${2:-""}
+# Check if first argument is a JSON file
+if [[ "$1" == *.json ]] && [ -f "$1" ]; then
+  # Auto-detect mode
+  PAYLOAD_FILE="$1"
+  EVENT_TYPE=""
+  
+  # Try to determine event type from payload
+  if [ -f "$(which jq)" ]; then
+    # Using jq to detect event type from the JSON structure
+    if jq -e '.workflow_run' "$PAYLOAD_FILE" > /dev/null 2>&1; then
+      EVENT_TYPE="workflow_run"
+    elif jq -e '.workflow_job' "$PAYLOAD_FILE" > /dev/null 2>&1; then
+      EVENT_TYPE="workflow_job"
+    elif jq -e '.check_run' "$PAYLOAD_FILE" > /dev/null 2>&1; then
+      EVENT_TYPE="check_run"
+    elif jq -e '.check_suite' "$PAYLOAD_FILE" > /dev/null 2>&1; then
+      EVENT_TYPE="check_suite"
+    elif jq -e '.registry_package' "$PAYLOAD_FILE" > /dev/null 2>&1; then
+      EVENT_TYPE="registry_package"
+    elif jq -e '.pull_request' "$PAYLOAD_FILE" > /dev/null 2>&1; then
+      EVENT_TYPE="pull_request"
+    elif jq -e '.issue' "$PAYLOAD_FILE" > /dev/null 2>&1; then
+      # Check if it's issue_comment
+      if jq -e '.comment' "$PAYLOAD_FILE" > /dev/null 2>&1; then
+        EVENT_TYPE="issue_comment"
+      else
+        EVENT_TYPE="issues"
+      fi
+    elif jq -e '.ref' "$PAYLOAD_FILE" > /dev/null 2>&1 && jq -e '.commits' "$PAYLOAD_FILE" > /dev/null 2>&1; then
+      EVENT_TYPE="push"
+    elif jq -e '.ref' "$PAYLOAD_FILE" > /dev/null 2>&1 && jq -e '.ref_type' "$PAYLOAD_FILE" > /dev/null 2>&1; then
+      EVENT_TYPE="create"
+    else
+      echo "Could not auto-detect event type from file. Using 'ping' as default."
+      EVENT_TYPE="ping"
+    fi
+  else
+    echo "jq not found. Cannot auto-detect event type. Using 'ping' as default."
+    EVENT_TYPE="ping"
+  fi
+  
+  echo "Auto-detected event type: $EVENT_TYPE"
+else
+  # Traditional usage with explicit event type
+  EVENT_TYPE=${1:-"issue_comment"}
+  PAYLOAD_FILE=${2:-""}
+fi
 
 # Start the local dev server if not already running
 # (Comment this out if you're running the server separately)

@@ -43,6 +43,12 @@ app.post('/webhook/:project?', (req, res) => {
       return res.status(400).send('Missing X-GitHub-Event header');
     }
     
+    // Validate payload
+    if (!payload || typeof payload !== 'object' || Object.keys(payload).length === 0) {
+      console.error(`Empty or invalid payload received for event type: ${eventType}`);
+      return res.status(400).send('Empty or invalid payload');
+    }
+    
     // Get the webhook URL for the specified project
     const webhookUrl = googleChatWebhooks[project];
     
