@@ -87,6 +87,8 @@ function formatGithubWebhookForGoogleChat(payload, eventType) {
       const status = payload.workflow_job?.status || 'unknown';
       const workflowBranch = payload.workflow_job?.head_branch || 'unknown branch';
       const runUrl = payload.workflow_job?.html_url || '';
+      const runId = payload.workflow_job?.run_id || '';
+      const headSha = payload.workflow_job?.head_sha?.substring(0, 7) || '';
       
       let jobEmoji = '🔄';
       if (status === 'completed') {
@@ -103,6 +105,9 @@ function formatGithubWebhookForGoogleChat(payload, eventType) {
       
       message = workflowJobMessage;
       message += `*Workflow*: ${workflow}\n`;
+      if (headSha) {
+        message += `*Commit*: ${headSha}\n`;
+      }
       message += `*Branch*: ${workflowBranch}\n`;
       message += `*Status*: ${status}\n`;
       
@@ -118,39 +123,6 @@ function formatGithubWebhookForGoogleChat(payload, eventType) {
       
       message += `\n${runUrl}`;
       break;
-    case 'check_suite':
-      const checkSuiteAction = payload.action || 'updated';
-      const checkSuiteStatus = payload.check_suite?.status || 'unknown';
-      const checkSuiteConclusion = payload.check_suite?.conclusion || '';
-      const checkSuiteUrl = payload.check_suite?.html_url || '';
-      const checkSuiteBranch = payload.check_suite?.head_branch || 'unknown branch';
-      
-      let checkSuiteEmoji = '🔄';
-      if (checkSuiteStatus === 'completed') {
-        checkSuiteEmoji = checkSuiteConclusion === 'success' ? '✅' : checkSuiteConclusion === 'failure' ? '❌' : checkSuiteConclusion === 'cancelled' ? '⚠️' : '❓';
-      }
-      
-      // Only include conclusion if it exists and status is completed
-      let checkSuiteMessage = '';
-      if (checkSuiteStatus === 'completed' && checkSuiteConclusion) {
-        checkSuiteMessage = `${checkSuiteEmoji} Check suite ${checkSuiteAction} with *${checkSuiteConclusion}*\n`;
-      } else {
-        checkSuiteMessage = `${checkSuiteEmoji} Check suite ${checkSuiteAction}\n`;
-      }
-      
-      message = checkSuiteMessage;
-      message += `*Status*: ${checkSuiteStatus}\n`;
-      message += `*Branch*: ${checkSuiteBranch}\n`;
-      
-      if (payload.check_suite?.pull_requests && payload.check_suite.pull_requests.length > 0) {
-        const firstPR = payload.check_suite.pull_requests[0];
-        message += `*PR*: #${firstPR.number}\n`;
-      }
-      
-      if (checkSuiteUrl) {
-        message += `\n${checkSuiteUrl}`;
-      }
-      break;
     case 'check_run':
       const checkRunAction = payload.action || 'updated';
       const checkRunName = payload.check_run?.name || 'Unknown check';
@@ -158,6 +130,7 @@ function formatGithubWebhookForGoogleChat(payload, eventType) {
       const checkRunConclusion = payload.check_run?.conclusion || '';
       const checkRunUrl = payload.check_run?.html_url || '';
       const checkRunBranch = payload.check_run?.check_suite?.head_branch || payload.check_run?.head_branch || 'unknown branch';
+      const checkRunSha = payload.check_run?.head_sha?.substring(0, 7) || '';
       
       let checkRunEmoji = '🔄';
       if (checkRunStatus === 'completed') {
@@ -174,6 +147,9 @@ function formatGithubWebhookForGoogleChat(payload, eventType) {
       
       message = checkRunMessage;
       message += `*Status*: ${checkRunStatus}\n`;
+      if (checkRunSha) {
+        message += `*Commit*: ${checkRunSha}\n`;
+      }
       message += `*Branch*: ${checkRunBranch}\n`;
       
       if (payload.check_run?.pull_requests && payload.check_run.pull_requests.length > 0) {
@@ -185,6 +161,43 @@ function formatGithubWebhookForGoogleChat(payload, eventType) {
         message += `\n${checkRunUrl}`;
       }
       break;
+    case 'check_suite':
+      const checkSuiteAction = payload.action || 'updated';
+      const checkSuiteStatus = payload.check_suite?.status || 'unknown';
+      const checkSuiteConclusion = payload.check_suite?.conclusion || '';
+      const checkSuiteUrl = payload.check_suite?.html_url || '';
+      const checkSuiteBranch = payload.check_suite?.head_branch || 'unknown branch';
+      const checkSuiteSha = payload.check_suite?.head_sha?.substring(0, 7) || '';
+      
+      let checkSuiteEmoji = '🔄';
+      if (checkSuiteStatus === 'completed') {
+        checkSuiteEmoji = checkSuiteConclusion === 'success' ? '✅' : checkSuiteConclusion === 'failure' ? '❌' : checkSuiteConclusion === 'cancelled' ? '⚠️' : '❓';
+      }
+      
+      // Only include conclusion if it exists and status is completed
+      let checkSuiteMessage = '';
+      if (checkSuiteStatus === 'completed' && checkSuiteConclusion) {
+        checkSuiteMessage = `${checkSuiteEmoji} Check suite ${checkSuiteAction} with *${checkSuiteConclusion}*\n`;
+      } else {
+        checkSuiteMessage = `${checkSuiteEmoji} Check suite ${checkSuiteAction}\n`;
+      }
+      
+      message = checkSuiteMessage;
+      message += `*Status*: ${checkSuiteStatus}\n`;
+      if (checkSuiteSha) {
+        message += `*Commit*: ${checkSuiteSha}\n`;
+      }
+      message += `*Branch*: ${checkSuiteBranch}\n`;
+      
+      if (payload.check_suite?.pull_requests && payload.check_suite.pull_requests.length > 0) {
+        const firstPR = payload.check_suite.pull_requests[0];
+        message += `*PR*: #${firstPR.number}\n`;
+      }
+      
+      if (checkSuiteUrl) {
+        message += `\n${checkSuiteUrl}`;
+      }
+      break;
     case 'workflow_run':
       const workflowRunAction = payload.action || 'updated';
       const workflowRunName = payload.workflow_run?.name || 'Unknown workflow';
@@ -192,6 +205,8 @@ function formatGithubWebhookForGoogleChat(payload, eventType) {
       const workflowRunConclusion = payload.workflow_run?.conclusion || '';
       const workflowRunUrl = payload.workflow_run?.html_url || '';
       const workflowRunBranch = payload.workflow_run?.head_branch || 'unknown branch';
+      const workflowRunTitle = payload.workflow_run?.display_title || '';
+      const workflowRunEvent = payload.workflow_run?.event || '';
       
       let workflowRunEmoji = '🔄';
       if (workflowRunStatus === 'completed') {
@@ -207,6 +222,12 @@ function formatGithubWebhookForGoogleChat(payload, eventType) {
       }
       
       message = workflowRunMessage;
+      if (workflowRunTitle) {
+        message += `*Title*: ${workflowRunTitle}\n`;
+      }
+      if (workflowRunEvent) {
+        message += `*Event*: ${workflowRunEvent}\n`;
+      }
       message += `*Status*: ${workflowRunStatus}\n`;
       message += `*Branch*: ${workflowRunBranch}\n`;
       message += `*Run By*: ${payload.sender?.login || 'Unknown'}\n`;
