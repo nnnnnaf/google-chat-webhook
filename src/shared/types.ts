@@ -116,6 +116,28 @@ export interface GitHubRegistryPackage {
   };
 }
 
+export interface GitHubDeploymentStatus {
+  id?: number;
+  state?: string;
+  description?: string;
+  environment?: string;
+  target_url?: string;
+  environment_url?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface GitHubDeployment {
+  id?: number;
+  sha?: string;
+  ref?: string;
+  task?: string;
+  environment?: string;
+  description?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface GitHubWebhookPayload {
   action?: string;
   repository?: GitHubRepository;
@@ -135,4 +157,21 @@ export interface GitHubWebhookPayload {
     name?: string;
   };
   deleted?: boolean;
+  // Status event properties
+  state?: string;
+  context?: string;
+  description?: string;
+  target_url?: string;
+  sha?: string;
+  commit?: {
+    commit?: {
+      message?: string;
+    };
+  };
+  branches?: Array<{
+    name?: string;
+  }>;
+  // Deployment status properties
+  deployment_status?: GitHubDeploymentStatus;
+  deployment?: GitHubDeployment;
 } 

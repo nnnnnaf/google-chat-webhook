@@ -301,6 +301,92 @@ export function formatGithubWebhookForGoogleChat(payload: GitHubWebhookPayload, 
         message += `\n${payload.registry_package.html_url}`;
       }
       break;
+    case 'status':
+      // Handle deployment status events
+      if (!payload.state) {
+        return `⚠️ Invalid status event payload: missing state data`;
+      }
+      
+      // Get status emoji based on the state
+      let statusEmoji = '🔄';
+      if (payload.state === 'success') {
+        statusEmoji = '✅';
+      } else if (payload.state === 'failure') {
+        statusEmoji = '❌';
+      } else if (payload.state === 'pending') {
+        statusEmoji = '⏳';
+      } else if (payload.state === 'error') {
+        statusEmoji = '⚠️';
+      }
+      
+      const statusContext = payload.context || 'Unknown context';
+      const statusDescription = payload.description || '';
+      const statusState = payload.state || 'unknown';
+      const statusTargetUrl = payload.target_url || '';
+      const commitSha = payload.sha?.substring(0, 7) || '';
+      let commitMessage = '';
+      
+      if (payload.commit?.commit?.message) {
+        commitMessage = payload.commit.commit.message.split('\n')[0]; // First line only
+      }
+      
+      message = `${statusEmoji} ${statusContext}: *${statusState}*\n`;
+      if (statusDescription) {
+        message += `${statusDescription}\n`;
+      }
+      if (commitSha) {
+        message += `*Commit*: \`${commitSha}\`${commitMessage ? ` - ${commitMessage}` : ''}\n`;
+      }
+      
+      // Include branch information if available
+      if (payload.branches && payload.branches.length > 0) {
+        message += `*Branch*: ${payload.branches[0].name}\n`;
+      }
+      
+      // Skip showing Railway dashboard links
+      if (statusTargetUrl && !statusTargetUrl.includes('railway.com')) {
+        message += `\n${statusTargetUrl}`;
+      }
+      break;
+    case 'deployment_status':
+      // Handle deployment status events
+      if (!payload.deployment_status) {
+        return `⚠️ Invalid deployment_status event payload: missing deployment_status data`;
+      }
+      
+      // Get status emoji based on the state
+      let deploymentEmoji = '🔄';
+      const deploymentState = payload.deployment_status.state || 'unknown';
+      if (deploymentState === 'success') {
+        deploymentEmoji = '✅';
+      } else if (deploymentState === 'failure') {
+        deploymentEmoji = '❌';
+      } else if (deploymentState === 'pending') {
+        deploymentEmoji = '⏳';
+      } else if (deploymentState === 'error') {
+        deploymentEmoji = '⚠️';
+      }
+      
+      const environment = payload.deployment_status.environment || payload.deployment?.environment || 'unknown';
+      const deploymentDesc = payload.deployment_status.description || '';
+      const deploymentCommitId = payload.deployment?.sha?.substring(0, 7) || '';
+      
+      message = `${deploymentEmoji} Deployment to *${environment}* ${deploymentState}\n`;
+      
+      if (deploymentDesc) {
+        message += `${deploymentDesc}\n`;
+      }
+      
+      if (deploymentCommitId) {
+        message += `*Commit*: \`${deploymentCommitId}\`\n`;
+      }
+      
+      if (payload.deployment?.description) {
+        message += `*Details*: ${payload.deployment.description}\n`;
+      }
+      
+      // Removed all URL links as requested
+      break;
     default:
       message = `📢 GitHub ${eventType} event received from *${repoName}*`;
   }
