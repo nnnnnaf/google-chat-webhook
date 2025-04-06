@@ -30,22 +30,28 @@ export function formatGithubWebhookForGoogleChat(payload: GitHubWebhookPayload, 
       }
       
       const branch = payload.ref?.replace('refs/heads/', '') || 'unknown branch';
-      const commitCount = payload.commits?.length || 0;
       const committer = payload.pusher?.name || 'Someone';
       
-      message = `🚀 *${committer}* pushed ${commitCount} commit${commitCount !== 1 ? 's' : ''} to *${branch}* in *${repoName}*`;
-      
-      // Add commit details (limited to first 3)
-      if (payload.commits && payload.commits.length > 0) {
-        message += '\n\n';
-        payload.commits.slice(0, 3).forEach((commit: any) => {
-          const shortHash = commit.id.substring(0, 7);
-          const commitMsg = commit.message.split('\n')[0]; // First line only
-          message += `• \`${shortHash}\`: ${commitMsg}\n`;
-        });
+      // Check if this is a branch deletion
+      if (payload.deleted === true) {
+        message = `🗑️ *${committer}* deleted branch *${branch}* in *${repoName}*`;
+      } else {
+        // Regular push event
+        const commitCount = payload.commits?.length || 0;
+        message = `🚀 *${committer}* pushed ${commitCount} commit${commitCount !== 1 ? 's' : ''} to *${branch}* in *${repoName}*`;
         
-        if (payload.commits.length > 3) {
-          message += `_...and ${payload.commits.length - 3} more commits_`;
+        // Add commit details (limited to first 3)
+        if (payload.commits && payload.commits.length > 0) {
+          message += '\n\n';
+          payload.commits.slice(0, 3).forEach((commit: any) => {
+            const shortHash = commit.id.substring(0, 7);
+            const commitMsg = commit.message.split('\n')[0]; // First line only
+            message += `• \`${shortHash}\`: ${commitMsg}\n`;
+          });
+          
+          if (payload.commits.length > 3) {
+            message += `_...and ${payload.commits.length - 3} more commits_`;
+          }
         }
       }
       break;

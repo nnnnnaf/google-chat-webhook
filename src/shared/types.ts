@@ -134,4 +134,5 @@ export interface GitHubWebhookPayload {
   pusher?: {
     name?: string;
   };
+  deleted?: boolean;
 } 
